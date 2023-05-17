@@ -20,22 +20,22 @@ st.title(TITLE)
 DBSP = "SET SEARCH_PATH = naive;"
 DBQS = {
     "active_or_published_daily_size": """
-        SELECT DATE_TRUNC('day', sq.entry_created) AS dy, SUM((1::BIGINT << sq.claimed_log2_size) / 1024 / 1024 / 1024) AS size, COUNT(sq.claimed_log2_size) AS pieces
+        SELECT DATE_TRUNC('day', sq.ts_from_epoch) AS dy, SUM((1::BIGINT << sq.claimed_log2_size) / 1024 / 1024 / 1024) AS size, COUNT(sq.claimed_log2_size) AS pieces
         FROM (
-            SELECT DISTINCT ON(piece_id) piece_id, entry_created, claimed_log2_size
+            SELECT piece_id, ts_from_epoch(sector_start_rounded), claimed_log2_size
             FROM published_deals
             WHERE client_id = '{client_id}'
             AND (status = 'active' OR status = 'published')
-            AND entry_created BETWEEN '{fday}' AND '{lday}'
+            AND ts_from_epoch(sector_start_rounded) BETWEEN '{fday}' AND '{lday}'
             ORDER BY piece_id, entry_created
         ) sq
-        GROUP BY DATE_TRUNC('day', sq.entry_created);
+        GROUP BY DATE_TRUNC('day', sq.ts_from_epoch);
     """,
     "provider_item_counts": """
         SELECT provider_id, count(1) AS cnt
         FROM published_deals
         WHERE client_id = '{client_id}'
-        AND entry_created BETWEEN '{fday}' AND '{lday}'
+        AND ts_from_epoch(sector_start_rounded) BETWEEN '{fday}' AND '{lday}'
         GROUP BY provider_id
         ORDER BY cnt DESC;
     """,
@@ -43,7 +43,7 @@ DBQS = {
         SELECT status, count(1)
         FROM published_deals
         WHERE client_id = '{client_id}'
-        AND entry_created BETWEEN '{fday}' AND '{lday}'
+        AND ts_from_epoch(sector_start_rounded) BETWEEN '{fday}' AND '{lday}'
         GROUP BY status;
     """,
     "copies_count_size": """
@@ -53,7 +53,7 @@ DBQS = {
             FROM published_deals
             WHERE client_id = '{client_id}'
             AND (status = 'active' OR status = 'published')
-            AND entry_created BETWEEN '{fday}' AND '{lday}'
+            AND ts_from_epoch(sector_start_rounded) BETWEEN '{fday}' AND '{lday}'
             GROUP BY piece_id
         ) sq
         GROUP BY copies;
@@ -63,7 +63,7 @@ DBQS = {
         FROM published_deals
         WHERE client_id = '{client_id}'
         AND status = 'terminated'
-        AND entry_created BETWEEN '{fday}' AND '{lday}'
+        AND ts_from_epoch(sector_start_rounded) BETWEEN '{fday}' AND '{lday}'
         GROUP BY reason;
     """,
     "index_age": """
@@ -82,6 +82,8 @@ def load_oracle(dbq):
 
 
 def humanize(s):
+    if s >= 1024*1024:
+        return f"{s / 1024 / 1024:,.1f} PB"
     if s >= 1024:
         return f"{s / 1024:,.1f} TB"
     return f"{s:,.1f} GB"
@@ -119,14 +121,17 @@ dsz = load_oracle(DBQS["active_or_published_daily_size"].format(client_id=client
     columns={"dy": "PTime", "size": "Onchain", "pieces": "Pieces"})
 dsz["Day"] = pd.to_datetime(dsz.PTime).dt.tz_localize(None)
 
+cols = st.columns(1)
+cols[0].metric("Total onboarded data", humanize(dsz.Onchain.sum()), help="Total onboarded data")
+
 cols = st.columns(4)
-cols[0].metric("On-chain data size", humanize(cp_ct_sz.Size.sum()), help="Total unique active/published pieces in the "
+cols[0].metric("Unique data size", humanize(cp_ct_sz.Size.sum()), help="Total unique active/published pieces in the "
                                                                          "Filecoin network")
-cols[1].metric("On-chain files", f"{cp_ct_sz.Count.sum():,.0f} files", help="Total unique active/published pieces in "
+cols[1].metric("Unique files", f"{cp_ct_sz.Count.sum():,.0f} files", help="Total unique active/published pieces in "
                                                                             "the Filecoin network")
-cols[2].metric("4+ Replications data size", humanize(cp_ct_sz[cp_ct_sz.Copies >= 4].Size.sum()),
+cols[2].metric("4+ Replications unique data size", humanize(cp_ct_sz[cp_ct_sz.Copies >= 4].Size.sum()),
                help="Unique active/published pieces with at least four replications in the Filecoin network")
-cols[3].metric("4+ Replications files", f"{cp_ct_sz[cp_ct_sz.Copies >= 4].Count.sum():,.0f} files",
+cols[3].metric("4+ Replications unique files", f"{cp_ct_sz[cp_ct_sz.Copies >= 4].Count.sum():,.0f} files",
                help="Unique active/published pieces with at least four replications in the Filecoin network")
 #
 cols = st.columns(4)
