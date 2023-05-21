@@ -107,13 +107,19 @@ def calculate_mean_std_for_last_n_days(df, col, n=14):
     return window.mean(), window.std()
 
 
+def extract_client_id(id):
+    if id.startswith("f"):
+        return id[1:]
+    return id
+
+
 
 ldf = datetime.today().date()
 fdf = ldf.replace(year=ldf.year - 1)
 fday, lday = st.slider("Date Range", value=(fdf, ldf), min_value=fdf, max_value=ldf)
 lday = lday + timedelta(1)
 
-client_id = st.text_input("Client id", '01131298')
+client_id = extract_client_id(st.text_input("Client id", '01131298'))
 
 cp_ct_sz = load_oracle(DBQS["copies_count_size"].format(client_id=client_id, fday=fday, lday=lday)).rename(
     columns={"copies": "Copies", "count": "Count", "size": "Size"})
