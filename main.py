@@ -19,7 +19,16 @@ st.title(TITLE)
 
 DBSP = "SET SEARCH_PATH = naive;"
 DBQS = {
-    "active_or_published_daily_size": """
+    "top_clients_for_last_week": """
+        SELECT client_id, SUM((1::BIGINT << claimed_log2_size) / 1024 / 1024 / 1024) AS size
+        FROM published_deals
+        WHERE (status = 'active' OR status = 'published')
+        AND ts_from_epoch(sector_start_rounded) BETWEEN '{fday}' AND '{lday}'
+        GROUP BY client_id
+        ORDER BY size DESC
+        LIMIT '{top_n}';
+    """,
+    "active_or_published_daily_size_for_client": """
         SELECT DATE_TRUNC('day', sq.ts_from_epoch) AS dy, SUM((1::BIGINT << sq.claimed_log2_size) / 1024 / 1024 / 1024) AS size, COUNT(sq.claimed_log2_size) AS pieces
         FROM (
             SELECT piece_id, ts_from_epoch(sector_start_rounded), claimed_log2_size
@@ -82,7 +91,7 @@ def load_oracle(dbq):
 
 
 def humanize(s):
-    if s >= 1024*1024:
+    if s >= 1024 * 1024:
         return f"{s / 1024 / 1024:,.1f} PB"
     if s >= 1024:
         return f"{s / 1024:,.1f} TB"
@@ -102,7 +111,7 @@ def temporal_bars(data, bin, period, ylim, state):
 
 
 def calculate_mean_std_for_last_n_days(df, col, n=14):
-    window = df[col].tail(n + 1).head(n) # ignore yesterday
+    window = df[col].tail(n + 1).head(n)  # ignore yesterday
 
     return window.mean(), window.std()
 
@@ -113,17 +122,27 @@ def extract_client_id(id):
     return id
 
 
-
+# Calculate last and first day
 ldf = datetime.today().date()
 fdf = ldf.replace(year=ldf.year - 1)
-fday, lday = st.slider("Date Range", value=(fdf, ldf), min_value=fdf, max_value=ldf)
+fday, lday = st.sidebar.slider("Date Range", value=(fdf, ldf), min_value=fdf, max_value=ldf)
 lday = lday + timedelta(1)
 
-client_id = extract_client_id(st.text_input("Client id", '01131298'))
+size_df = load_oracle(DBQS["top_clients_for_last_week"].format(fday=lday-pd.DateOffset(weeks=1), lday=lday, top_n=10)).rename(
+    columns={"client_id": "Client ID", "size": "Onchain"})
+size_df["Onchain"] = size_df["Onchain"]*1.0/1024
 
+st.sidebar.markdown("## Top 10 onboarders in the last week")
+st.sidebar.dataframe(size_df.style.format({"Onchain": "{:,.0f} TB"}), use_container_width=True)
+
+# Set client id
+client_id = st.sidebar.text_input("Client id", "01131298")
+client_id = extract_client_id(client_id)
+
+# Run database queries
 cp_ct_sz = load_oracle(DBQS["copies_count_size"].format(client_id=client_id, fday=fday, lday=lday)).rename(
     columns={"copies": "Copies", "count": "Count", "size": "Size"})
-dsz = load_oracle(DBQS["active_or_published_daily_size"].format(client_id=client_id, fday=fday, lday=lday)).rename(
+dsz = load_oracle(DBQS["active_or_published_daily_size_for_client"].format(client_id=client_id, fday=fday, lday=lday)).rename(
     columns={"dy": "PTime", "size": "Onchain", "pieces": "Pieces"})
 dsz["Day"] = pd.to_datetime(dsz.PTime).dt.tz_localize(None)
 
@@ -246,59 +265,61 @@ with cols[3]:
     st.dataframe(trm_ct.set_index(trm_ct.columns[0]), use_container_width=True)
     st.write(f"_Updated: {(datetime.now(timezone.utc) - idx_age.iloc[0, 0]).total_seconds() / 60:,.0f} minutes ago._")
 
-st.header("Projection")
+with st.expander("### Experimental: Projection"):
 
-form = st.form(key='projection')
-c1, c2, c3 = st.columns(3)
-with c1:
-    target_size = st.number_input("Full dataset size (TB)", min_value=0, value=1024)  # Defaults to 1 PiB for now, change it to LDN
-with c2:
-    last_n = st.number_input("Number of days for window", min_value=2, value=14, help="Average onboarding rate is calculated over last n days, where n is the input of this field")
-with c3:
-    onb_rate = st.number_input("Target onboarding rate (TB)/day", min_value=0, value=10)
+    form = st.form(key='projection')
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        target_size = st.number_input("Full dataset size (TB)", min_value=0,
+                                      value=1024)  # Defaults to 1 PiB for now, change it to LDN
+    with c2:
+        last_n = st.number_input("Number of days for window", min_value=2, value=14,
+                                 help="Average onboarding rate is calculated over last n days, where n is the input of this field")
+    with c3:
+        onb_rate = st.number_input("Target onboarding rate (TB)/day", min_value=0, value=10)
 
-mean, std = calculate_mean_std_for_last_n_days(dsz, 'Onchain', last_n)
-current_size = dsz['Onchain'].sum()
-t_delta = (target_size * 1024 - current_size) / mean
-est_end_date = lday + timedelta(days=t_delta)
+    mean, std = calculate_mean_std_for_last_n_days(dsz, 'Onchain', last_n)
+    current_size = dsz['Onchain'].sum()
+    t_delta = (target_size * 1024 - current_size) / mean
+    est_end_date = lday + timedelta(days=t_delta)
 
-target_t_delta = (target_size * 1024 - current_size) / (int(onb_rate) * 1024)
-target_end_date = lday + timedelta(days=target_t_delta)
+    target_t_delta = (target_size * 1024 - current_size) / (int(onb_rate) * 1024)
+    target_end_date = lday + timedelta(days=target_t_delta)
 
-cols = st.columns(4)
-cols[0].metric("Expected finish date using mean onboarding rate", str(est_end_date),
-               help="Expected finish date based on the mean daily onboarding rate over last {last_n} days".format(last_n=last_n))
-cols[1].metric("Expected finish date using target onboarding rate", str(target_end_date),
-               help="Expected finish date based on the target daily onboarding rate")
-cols[2].metric("Mean daily onboarding rate over last {last_n} days".format(last_n=last_n), humanize(mean))
-cols[3].metric("Standard Deviation of daily onboarding rate over last {last_n} days".format(last_n=last_n), humanize(std))
+    cols = st.columns(4)
+    cols[0].metric("Expected finish date using mean onboarding rate", str(est_end_date),
+                   help="Expected finish date based on the mean daily onboarding rate over last {last_n} days".format(
+                       last_n=last_n))
+    cols[1].metric("Expected finish date using target onboarding rate", str(target_end_date),
+                   help="Expected finish date based on the target daily onboarding rate")
+    cols[2].metric("Mean daily onboarding rate over last {last_n} days".format(last_n=last_n), humanize(mean))
+    cols[3].metric("Standard Deviation of daily onboarding rate over last {last_n} days".format(last_n=last_n),
+                   humanize(std))
 
+    cols = st.columns(1)
 
-cols = st.columns(1)
+    estimated_line = pd.DataFrame({
+        'Day': [lday, est_end_date],
+        'TotalOnChain': [current_size, int(target_size) * 1024],
 
-estimated_line = pd.DataFrame({
-    'Day': [lday, est_end_date],
-    'TotalOnChain': [current_size, int(target_size) * 1024],
+    })
 
-})
+    target_line = pd.DataFrame({
+        'Day': [lday, target_end_date],
+        'TotalOnChain': [current_size, int(target_size) * 1024]
+    })
 
-target_line = pd.DataFrame({
-    'Day': [lday, target_end_date],
-    'TotalOnChain': [current_size, int(target_size) * 1024]
-})
+    # Create the base chart with color encoding and legend title
+    base = alt.Chart(dsz).mark_line(size=4, color="#ff2b2b").transform_window(
+        sort=[{"field": "Day"}],
+        TotalOnChain="sum(Onchain)"
+    ).encode(x="Day:T", y="TotalOnChain:Q")
 
-# Create the base chart with color encoding and legend title
-base = alt.Chart(dsz).mark_line(size=4, color="#ff2b2b").transform_window(
-    sort=[{"field": "Day"}],
-    TotalOnChain="sum(Onchain)"
-).encode(x="Day:T", y="TotalOnChain:Q")
+    # Create the estimated and target lines with color encoding
+    est_line_plot = alt.Chart(estimated_line).mark_line(color='green').encode(x="Day:T", y="TotalOnChain:Q")
+    target_line_plot = alt.Chart(target_line).mark_line(color='blue').encode(x="Day:T", y="TotalOnChain:Q")
 
-# Create the estimated and target lines with color encoding
-est_line_plot = alt.Chart(estimated_line).mark_line(color='green').encode(x="Day:T", y="TotalOnChain:Q")
-target_line_plot = alt.Chart(target_line).mark_line(color='blue').encode(x="Day:T", y="TotalOnChain:Q")
+    # Layer the three components with the base chart, estimated line, and target line
+    ch = alt.layer(base, est_line_plot, target_line_plot).configure_axisX(grid=False)
 
-# Layer the three components with the base chart, estimated line, and target line
-ch = alt.layer(base, est_line_plot, target_line_plot).configure_axisX(grid=False)
-
-cols[0].altair_chart(ch, use_container_width=True)
-
+    cols[0].altair_chart(ch, use_container_width=True)
