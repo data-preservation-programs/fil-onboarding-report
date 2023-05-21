@@ -158,7 +158,6 @@ st.metric(f"Total onboarded data by {client_id}".format(client_id=client_id), hu
 #     columns={"dy": "PTime", "size": "Onchain", "pieces": "Pieces"})
 # dsz["Day"] = pd.to_datetime(dsz.PTime).dt.tz_localize(None)
 
-
 # cols = st.columns(1)
 # cols[0].metric("Total onboarded data", humanize(dsz.Onchain.sum()), help="Total onboarded data")
 #
