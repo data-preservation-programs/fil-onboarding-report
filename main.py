@@ -107,13 +107,19 @@ def calculate_mean_std_for_last_n_days(df, col, n=14):
     return window.mean(), window.std()
 
 
+def extract_client_id(id):
+    if id.startswith("f"):
+        return id[1:]
+    return id
+
+
 
 ldf = datetime.today().date()
 fdf = ldf.replace(year=ldf.year - 1)
 fday, lday = st.slider("Date Range", value=(fdf, ldf), min_value=fdf, max_value=ldf)
 lday = lday + timedelta(1)
 
-client_id = st.text_input("Client id", '01131298')
+client_id = extract_client_id(st.text_input("Client id", '01131298'))
 
 cp_ct_sz = load_oracle(DBQS["copies_count_size"].format(client_id=client_id, fday=fday, lday=lday)).rename(
     columns={"copies": "Copies", "count": "Count", "size": "Size"})
@@ -126,9 +132,9 @@ cols[0].metric("Total onboarded data", humanize(dsz.Onchain.sum()), help="Total 
 
 cols = st.columns(4)
 cols[0].metric("Unique data size", humanize(cp_ct_sz.Size.sum()), help="Total unique active/published pieces in the "
-                                                                         "Filecoin network")
+                                                                       "Filecoin network")
 cols[1].metric("Unique files", f"{cp_ct_sz.Count.sum():,.0f} files", help="Total unique active/published pieces in "
-                                                                            "the Filecoin network")
+                                                                          "the Filecoin network")
 cols[2].metric("4+ Replications unique data size", humanize(cp_ct_sz[cp_ct_sz.Copies >= 4].Size.sum()),
                help="Unique active/published pieces with at least four replications in the Filecoin network")
 cols[3].metric("4+ Replications unique files", f"{cp_ct_sz[cp_ct_sz.Copies >= 4].Count.sum():,.0f} files",
@@ -283,9 +289,9 @@ target_line = pd.DataFrame({
 
 # Create the base chart with color encoding and legend title
 base = alt.Chart(dsz).mark_line(size=4, color="#ff2b2b").transform_window(
-        sort=[{"field": "Day"}],
-        TotalOnChain="sum(Onchain)"
-    ).encode(x="Day:T", y="TotalOnChain:Q")
+    sort=[{"field": "Day"}],
+    TotalOnChain="sum(Onchain)"
+).encode(x="Day:T", y="TotalOnChain:Q")
 
 # Create the estimated and target lines with color encoding
 est_line_plot = alt.Chart(estimated_line).mark_line(color='green').encode(x="Day:T", y="TotalOnChain:Q")
@@ -295,3 +301,4 @@ target_line_plot = alt.Chart(target_line).mark_line(color='blue').encode(x="Day:
 ch = alt.layer(base, est_line_plot, target_line_plot).configure_axisX(grid=False)
 
 cols[0].altair_chart(ch, use_container_width=True)
+
