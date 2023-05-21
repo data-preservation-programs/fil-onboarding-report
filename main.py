@@ -107,12 +107,6 @@ def calculate_mean_std_for_last_n_days(df, col, n=14):
     return window.mean(), window.std()
 
 
-def extract_client_id(id):
-    if id.startswith("f"):
-        return id[1:]
-    return id
-
-
 
 ldf = datetime.today().date()
 fdf = ldf.replace(year=ldf.year - 1)
@@ -301,4 +295,3 @@ target_line_plot = alt.Chart(target_line).mark_line(color='blue').encode(x="Day:
 ch = alt.layer(base, est_line_plot, target_line_plot).configure_axisX(grid=False)
 
 cols[0].altair_chart(ch, use_container_width=True)
-
