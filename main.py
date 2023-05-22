@@ -27,7 +27,7 @@ def humanize(s):
     return f"{s:,.1f} GB"
 
 
-def temporal_bars(data, bin, period, ylim, state):
+def temporal_bars(data, bin, period, ylim, state, color):
     ch = alt.Chart(data, height=250)
     ch = ch.mark_bar(color="#ff2b2b") if state == "Onchain" else ch.mark_bar()
     return ch.encode(
@@ -35,7 +35,8 @@ def temporal_bars(data, bin, period, ylim, state):
         y=alt.Y(f"sum({state}):Q", axis=alt.Axis(format=",.0f"), title=f"{state} Size",
                 scale=alt.Scale(domain=[0, ylim])),
         tooltip=[alt.Tooltip(f"{bin}(Day):T", title=period),
-                 alt.Tooltip("sum(Onchain):Q", format=",.0f", title="Onchain")]
+                 alt.Tooltip("sum(Onchain):Q", format=",.0f", title="Onchain")],
+        color=color
     ).interactive(bind_y=False).configure_axisX(grid=False)
 
 
@@ -71,10 +72,9 @@ st.sidebar.dataframe(size_df.style.format({"Onchain": "{:,.0f} TB"}), use_contai
 # Set client id
 client_ids = st.sidebar.text_input("Client id", "01131298")
 client_ids = get_client_ids(client_ids)
-client_id = client_ids[0]
 
 # Run database queries
-cp_ct_sz = copies_count_size(first_day=fday, last_day=lday, client_id=client_id)
+cp_ct_sz = copies_count_size(first_day=fday, last_day=lday, client_ids=client_ids)
 daily_sizes = active_or_published_daily_size(first_day=fday, last_day=lday, client_ids=client_ids)
 daily_sizes = daily_sizes.dropna(subset=["Day"])
 
@@ -126,24 +126,24 @@ ch = alt.layer(
 ).interactive(bind_y=False).configure_axisX(grid=False)
 tbs[0].altair_chart(ch, use_container_width=True)
 
-ch = temporal_bars(daily_sizes, "utcyearmonthdate", "Day", ranges["Day"], "Onchain")
+ch = temporal_bars(daily_sizes, "utcyearmonthdate", "Day", ranges["Day"], "Onchain", "client_id")
 tbs[1].altair_chart(ch, use_container_width=True)
 
-ch = temporal_bars(daily_sizes, "yearweek", "Week", ranges["Week"], "Onchain")
+ch = temporal_bars(daily_sizes, "yearweek", "Week", ranges["Week"], "Onchain", "client_id")
 tbs[2].altair_chart(ch, use_container_width=True)
 
-ch = temporal_bars(daily_sizes, "yearmonth", "Month", ranges["Month"], "Onchain")
+ch = temporal_bars(daily_sizes, "yearmonth", "Month", ranges["Month"], "Onchain", "client_id")
 tbs[3].altair_chart(ch, use_container_width=True)
 
-ch = temporal_bars(daily_sizes, "yearquarter", "Quarter", ranges["Quarter"], "Onchain")
+ch = temporal_bars(daily_sizes, "yearquarter", "Quarter", ranges["Quarter"], "Onchain", "client_id")
 tbs[4].altair_chart(ch, use_container_width=True)
 
-ch = temporal_bars(daily_sizes, "year", "Year", ranges["Year"], "Onchain")
+ch = temporal_bars(daily_sizes, "year", "Year", ranges["Year"], "Onchain", "client_id")
 tbs[5].altair_chart(ch, use_container_width=True)
 
-pro_ct = provider_item_counts(first_day=fday, last_day=lday, client_id=client_id)
-dl_st_ct = deal_count_by_status(first_day=fday, last_day=lday, client_id=client_id)
-trm_ct = terminated_deal_count_by_reason(first_day=fday, last_day=lday, client_id=client_id)
+pro_ct = provider_item_counts(first_day=fday, last_day=lday, client_ids=client_ids)
+dl_st_ct = deal_count_by_status(first_day=fday, last_day=lday, client_ids=client_ids)
+trm_ct = terminated_deal_count_by_reason(first_day=fday, last_day=lday, client_ids=client_ids)
 idx_age = index_age()
 
 cols = tbs[6].columns((3, 2, 2))
