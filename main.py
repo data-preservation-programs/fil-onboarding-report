@@ -7,7 +7,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from database import load_oracle, DBQS, top_clients_for_last_week, active_or_published_daily_size
+from database import top_clients_for_last_week, active_or_published_daily_size, copies_count_size, provider_item_counts, deal_count_by_status, terminated_deal_count_by_reason, index_age
 
 TITLE = "Data Onboarding to Filecoin"
 ICON = "./assets/filecoin-symbol.png"
@@ -74,8 +74,7 @@ client_ids = get_client_ids(client_ids)
 client_id = client_ids[0]
 
 # Run database queries
-cp_ct_sz = load_oracle(DBQS["copies_count_size"].format(client_id=client_id, fday=fday, lday=lday)).rename(
-    columns={"copies": "Copies", "count": "Count", "size": "Size"})
+cp_ct_sz = copies_count_size(first_day=fday, last_day=lday, client_id=client_id)
 daily_sizes = active_or_published_daily_size(first_day=fday, last_day=lday, client_ids=client_ids)
 daily_sizes = daily_sizes.dropna(subset=["Day"])
 
@@ -142,15 +141,10 @@ tbs[4].altair_chart(ch, use_container_width=True)
 ch = temporal_bars(daily_sizes, "year", "Year", ranges["Year"], "Onchain")
 tbs[5].altair_chart(ch, use_container_width=True)
 
-pro_ct = load_oracle(DBQS["provider_item_counts"].format(client_id=client_id, fday=fday, lday=lday)).rename(
-    columns={"provider_id": "Provider", "cnt": "Count"})
-dl_st_ct = load_oracle(DBQS["deal_count_by_status"].format(client_id=client_id, fday=fday, lday=lday)).rename(
-    columns={"status": "Status", "count": "Count"})
-trm_ct = load_oracle(DBQS["terminated_deal_count_by_reason"].format(client_id=client_id, fday=fday, lday=lday)).rename(
-    columns={"reason": "Reason", "count": "Count"}).replace("deal no longer part of market-actor state",
-                                                            "expired").replace("entered on-chain final-slashed state",
-                                                                               "slashed")
-idx_age = load_oracle(DBQS["index_age"])
+pro_ct = provider_item_counts(first_day=fday, last_day=lday, client_id=client_id)
+dl_st_ct = deal_count_by_status(first_day=fday, last_day=lday, client_id=client_id)
+trm_ct = terminated_deal_count_by_reason(first_day=fday, last_day=lday, client_id=client_id)
+idx_age = index_age()
 
 cols = tbs[6].columns((3, 2, 2))
 with cols[0]:
