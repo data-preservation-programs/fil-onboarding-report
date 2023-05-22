@@ -61,8 +61,14 @@ def top_clients_for_last_week(first_day, last_day, top_n=10):
     ).rename(columns={"client_id": "Client ID", "size": "Onchain"})
 
 
+def int_client_id(client):
+    if client.startswith("f"):
+        return client[1:].strip()
+    return client.strip()
+
+
 def client_id_query(client_ids):
-    return " OR ".join(["client_id = '{client_id}'".format(client_id=i) for i in client_ids])
+    return " OR ".join(["client_id = '{client_id}'".format(client_id=int_client_id(i)) for i in client_ids])
 
 
 def active_or_published_daily_size(first_day, last_day, client_ids):
