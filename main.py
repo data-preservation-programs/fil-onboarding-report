@@ -63,7 +63,7 @@ fday, lday = st.sidebar.slider("Date Range", value=(fdf, ldf), min_value=fdf, ma
 lday = lday + timedelta(1)
 
 size_df = top_clients_for_last_week(first_day=lday - pd.DateOffset(weeks=1), last_day=lday, top_n=10)
-size_df["Onchain"] = size_df["Onchain"]*1.0/1024
+size_df["Onchain"] = size_df["Onchain"] * 1.0 / 1024
 
 st.sidebar.markdown("## Top 10 onboarders in the last week")
 st.sidebar.dataframe(size_df.style.format({"Onchain": "{:,.0f} TB"}), use_container_width=True)
@@ -118,7 +118,7 @@ ranges = {
     "Year": rtv.groupby(pd.Grouper(freq="Y")).sum().to_numpy().max()
 }
 
-base = alt.Chart(daily_sizes).encode(x="Day:T")
+base = alt.Chart(daily_sizes).encode(x=alt.X("Day:T"))
 ch = alt.layer(
     base.mark_area().transform_window(
         sort=[{"field": "Day"}],
@@ -199,7 +199,6 @@ with cols[3]:
     st.write(f"_Updated: {(datetime.now(timezone.utc) - idx_age.iloc[0, 0]).total_seconds() / 60:,.0f} minutes ago._")
 
 with st.expander("### Experimental: Projection"):
-
     form = st.form(key='projection')
     c1, c2, c3 = st.columns(3)
     with c1:
