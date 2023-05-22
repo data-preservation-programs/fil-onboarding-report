@@ -4,28 +4,6 @@ import pandas as pd
 import psycopg2
 import streamlit as st
 
-DBQS = {
-    "deal_count_by_status": """
-        SELECT status, count(1)
-        FROM published_deals
-        WHERE client_id = '{client_id}'
-        AND ts_from_epoch(sector_start_rounded) BETWEEN '{fday}' AND '{lday}'
-        GROUP BY status;
-    """,
-    "terminated_deal_count_by_reason": """
-        SELECT published_deal_meta->>'termination_reason' AS reason, count(1)
-        FROM published_deals
-        WHERE client_id = '{client_id}'
-        AND status = 'terminated'
-        AND ts_from_epoch(sector_start_rounded) BETWEEN '{fday}' AND '{lday}'
-        GROUP BY reason;
-    """,
-    "index_age": """
-        SELECT ts_from_epoch( ( metadata->'market_state'->'epoch' )::INTEGER )
-        FROM global;
-    """
-}
-
 
 # Helper functions
 def int_client_id(client):
