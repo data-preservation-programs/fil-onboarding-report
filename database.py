@@ -56,58 +56,74 @@ def active_or_published_daily_size(first_day, last_day, client_ids):
     return df
 
 
-def copies_count_size(first_day, last_day, client_id):
+def copies_count_size(first_day, last_day, client_ids):
     return load_oracle(
         """
             SELECT sq.copies, COUNT(sq.copies), SUM((1::BIGINT << sq.sz) / 1024 / 1024 / 1024) AS size
             FROM (
                 SELECT COUNT(piece_id) AS copies, MAX(claimed_log2_size) AS sz
                 FROM published_deals
-                WHERE client_id = '{client_id}'
+                WHERE
+        """
+        + client_id_query(client_ids)
+        +
+        """
                 AND (status = 'active' OR status = 'published')
                 AND ts_from_epoch(sector_start_rounded) BETWEEN '{fday}' AND '{lday}'
                 GROUP BY piece_id
             ) sq
             GROUP BY copies;
-        """.format(fday=first_day, lday=last_day, client_id=client_id)
+        """.format(fday=first_day, lday=last_day)
     ).rename(columns={"copies": "Copies", "count": "Count", "size": "Size"})
 
 
-def provider_item_counts(first_day, last_day, client_id):
+def provider_item_counts(first_day, last_day, client_ids):
     return load_oracle(
         """
             SELECT provider_id, count(1) AS cnt
             FROM published_deals
-            WHERE client_id = '{client_id}'
+            WHERE
+        """
+        + client_id_query(client_ids)
+        +
+        """
             AND ts_from_epoch(sector_start_rounded) BETWEEN '{fday}' AND '{lday}'
             GROUP BY provider_id
             ORDER BY cnt DESC;
-        """.format(fday=first_day, lday=last_day, client_id=client_id)
+        """.format(fday=first_day, lday=last_day)
     ).rename(columns={"provider_id": "Provider", "cnt": "Count"})
 
 
-def deal_count_by_status(first_day, last_day, client_id):
+def deal_count_by_status(first_day, last_day, client_ids):
     return load_oracle(
         """
             SELECT status, count(1)
             FROM published_deals
-            WHERE client_id = '{client_id}'
+            WHERE
+        """
+        + client_id_query(client_ids)
+        +
+        """
             AND ts_from_epoch(sector_start_rounded) BETWEEN '{fday}' AND '{lday}'
             GROUP BY status;
-        """.format(fday=first_day, lday=last_day, client_id=client_id)
+        """.format(fday=first_day, lday=last_day)
     ).rename(columns={"status": "Status", "count": "Count"})
 
 
-def terminated_deal_count_by_reason(first_day, last_day, client_id):
+def terminated_deal_count_by_reason(first_day, last_day, client_ids):
     return load_oracle(
         """
             SELECT published_deal_meta->>'termination_reason' AS reason, count(1)
             FROM published_deals
-            WHERE client_id = '{client_id}'
+            WHERE
+        """
+        + client_id_query(client_ids)
+        +
+        """
             AND status = 'terminated'
             AND ts_from_epoch(sector_start_rounded) BETWEEN '{fday}' AND '{lday}'
             GROUP BY reason;
-        """.format(fday=first_day, lday=last_day, client_id=client_id)
+        """.format(fday=first_day, lday=last_day)
     ).rename(columns={"reason": "Reason", "count": "Count"}) \
         .replace("deal no longer part of market-actor state", "expired") \
         .replace("entered on-chain final-slashed state", "slashed")
