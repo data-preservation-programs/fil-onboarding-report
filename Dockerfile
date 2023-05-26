@@ -8,7 +8,6 @@ ENTRYPOINT  ["streamlit", "run"]
 CMD         ["main.py"]
 
 RUN         pip install \
-              internetarchive \
               fsspec \
               pandas \
               plotly \

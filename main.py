@@ -70,7 +70,10 @@ st.sidebar.markdown("## Top 10 onboarders in the last week")
 st.sidebar.dataframe(size_df.style.format({"Onchain": "{:,.0f} TB"}), use_container_width=True)
 
 # Set client id
-client_ids = st.sidebar.text_input("Client id", "01131298")
+query_params = st.experimental_get_query_params()
+client_ids = query_params['client_id']
+
+client_ids = st.sidebar.text_input("Comma separated list of client ids", ",".join(client_ids))
 client_ids = get_client_ids(client_ids)
 
 # Run database queries
