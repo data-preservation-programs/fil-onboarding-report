@@ -71,9 +71,11 @@ st.sidebar.dataframe(size_df.style.format({"Onchain": "{:,.0f} TB"}), use_contai
 
 # Set client id
 query_params = st.experimental_get_query_params()
-client_ids = query_params['client_id']
+default_ids = "01131298"
+if 'client_id' in query_params:
+    default_ids = ",".join(query_params['client_id'])
 
-client_ids = st.sidebar.text_input("Comma separated list of client ids", ",".join(client_ids))
+client_ids = st.sidebar.text_input("Comma separated list of client ids", default_ids)
 client_ids = get_client_ids(client_ids)
 
 # Run database queries
