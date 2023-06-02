@@ -21,9 +21,9 @@ st.title(TITLE)
 
 def humanize(s):
     if s >= 1024 * 1024 * 1024:
-        return f"{s / 1024 / 1024 / 1024:,.1f} EB"
+        return f"{s / 1024 / 1024 / 1024:,.2f} EB"
     if s >= 1024 * 1024:
-        return f"{s / 1024 / 1024:,.1f} PB"
+        return f"{s / 1024 / 1024:,.2f} PB"
     if s >= 1024:
         return f"{s / 1024:,.1f} TB"
     return f"{s:,.1f} GB"
