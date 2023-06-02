@@ -7,7 +7,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from database import top_clients_for_last_week, active_or_published_daily_size, copies_count_size, provider_item_counts, deal_count_by_status, terminated_deal_count_by_reason, index_age
+from database import top_clients_for_last_week, active_or_published_daily_size, copies_count_size, provider_item_counts, deal_count_by_status, terminated_deal_count_by_reason, index_age, total_active_or_published_daily_size
 
 TITLE = "Data Onboarding to Filecoin"
 ICON = "./assets/filecoin-symbol.png"
@@ -20,6 +20,8 @@ st.title(TITLE)
 
 
 def humanize(s):
+    if s >= 1024 * 1024 * 1024:
+        return f"{s / 1024 / 1024 / 1024:,.1f} EB"
     if s >= 1024 * 1024:
         return f"{s / 1024 / 1024:,.1f} PB"
     if s >= 1024:
@@ -81,8 +83,24 @@ client_ids = get_client_ids(client_ids)
 # Run database queries
 cp_ct_sz = copies_count_size(first_day=fday, last_day=lday, client_ids=client_ids)
 daily_sizes = active_or_published_daily_size(first_day=fday, last_day=lday, client_ids=client_ids)
+total_daily_sizes = total_active_or_published_daily_size()
 daily_sizes = daily_sizes.dropna(subset=["Day"])
 
+
+st.subheader("Aggregated")
+base = alt.Chart(total_daily_sizes).encode(x=alt.X("Day:T"))
+ch = alt.layer(
+    base.mark_line().transform_window(
+        sort=[{"field": "Day"}],
+        TotalOnChain="sum(Onchain)"
+    ).encode(y="TotalOnChain:Q"),
+).interactive(bind_y=False).configure_axisX(grid=False)
+st.altair_chart(ch, use_container_width=True)
+
+cols = st.columns(1)
+cols[0].metric("Total onboarded data", humanize(total_daily_sizes.Onchain.sum()), help="Total onboarded data")
+
+st.subheader("Client specific")
 cols = st.columns(1)
 cols[0].metric("Total onboarded data", humanize(daily_sizes.Onchain.sum()), help="Total onboarded data")
 
