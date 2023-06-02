@@ -48,11 +48,29 @@ def active_or_published_daily_size(first_day, last_day, client_ids):
                 ORDER BY piece_id, entry_created
             ) sq
             GROUP BY sq.client_id, DATE_TRUNC('day', sq.ts_from_epoch);
-        """.format(fday=first_day, lday=last_day, client_id=client_ids[0])
+        """.format(fday=first_day, lday=last_day)
     ).rename(columns={"dy": "PTime", "size": "Onchain", "pieces": "Pieces"})
 
     df["Day"] = pd.to_datetime(df.PTime).dt.tz_localize(None)
     df["client_id"] = "f" + df["client_id"].astype(str)
+    return df
+
+
+def total_active_or_published_daily_size():
+    df = load_oracle(
+        """
+            SELECT DATE_TRUNC('day', sq.ts_from_epoch) AS dy, SUM((1::BIGINT << sq.claimed_log2_size) / 1024 / 1024 / 1024) AS size, COUNT(sq.claimed_log2_size) AS pieces
+            FROM (
+                SELECT piece_id, ts_from_epoch(sector_start_rounded), claimed_log2_size
+                FROM published_deals
+                WHERE (status = 'active' OR status = 'published')
+                ORDER BY piece_id, entry_created
+            ) sq
+            GROUP BY DATE_TRUNC('day', sq.ts_from_epoch);
+        """
+    ).rename(columns={"dy": "PTime", "size": "Onchain", "pieces": "Pieces"})
+
+    df["Day"] = pd.to_datetime(df.PTime).dt.tz_localize(None)
     return df
 
 
