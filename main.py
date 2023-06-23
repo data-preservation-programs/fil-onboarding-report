@@ -73,7 +73,7 @@ st.sidebar.dataframe(size_df.style.format({"Onchain": "{:,.0f} TB"}), use_contai
 
 # Set client id
 query_params = st.experimental_get_query_params()
-default_ids = "01131298"
+default_ids = "01131298" # Internet archive
 if 'client_id' in query_params:
     default_ids = ",".join(query_params['client_id'])
 
@@ -115,22 +115,22 @@ cols[3].metric("4+ Replications unique files", f"{cp_ct_sz[cp_ct_sz.Copies >= 4]
                help="Unique active/published pieces with at least four replications in the Filecoin network")
 #
 cols = st.columns(4)
-rt = daily_sizes.set_index("Day").sort_index()
-last = rt.last("D")
+last = daily_sizes[daily_sizes["Day"] >= lday - pd.DateOffset(days=1)]
 cols[0].metric("Onboarded Last Day", humanize(last.Onchain.sum()),
                help="Total packed and on-chain sizes of unique files of the last day")
-last = rt.last("7D")
+last = daily_sizes[daily_sizes["Day"] >= lday - pd.DateOffset(days=7)]
 cols[1].metric("Onboarded Last Week", humanize(last.Onchain.sum()),
                help="Total packed and on-chain sizes of unique files of the last week")
-last = rt.last("30D")
+last = daily_sizes[daily_sizes["Day"] >= lday - pd.DateOffset(days=30)]
 cols[2].metric("Onboarded Last Month", humanize(last.Onchain.sum()),
                help="Total packed and on-chain sizes of unique files of the last month")
-last = rt.last("365D")
+last = daily_sizes[daily_sizes["Day"] >= lday - pd.DateOffset(days=365)]
 cols[3].metric("Onboarded Last Year", humanize(last.Onchain.sum()),
                help="Total packed and on-chain sizes of unique files of the last year")
 
 tbs = st.tabs(["Accumulated", "Daily", "Weekly", "Monthly", "Quarterly", "Yearly", "Status", "Data"])
 
+rt = daily_sizes.set_index("Day").sort_index()
 rtv = rt[["Onchain"]]
 ranges = {
     "Day": rtv.groupby(pd.Grouper(freq="D")).sum().to_numpy().max(),
@@ -215,60 +215,60 @@ with cols[3]:
     st.dataframe(trm_ct.set_index(trm_ct.columns[0]), use_container_width=True)
     st.write(f"_Updated: {(datetime.now(timezone.utc) - idx_age.iloc[0, 0]).total_seconds() / 60:,.0f} minutes ago._")
 
-with st.expander("### Experimental: Projection"):
-    form = st.form(key='projection')
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        target_size = st.number_input("Full dataset size (TB)", min_value=0,
-                                      value=1024)  # Defaults to 1 PiB for now, change it to LDN
-    with c2:
-        last_n = st.number_input("Number of days for window", min_value=2, value=14,
-                                 help="Average onboarding rate is calculated over last n days, where n is the input of this field")
-    with c3:
-        onb_rate = st.number_input("Target onboarding rate (TB)/day", min_value=0, value=10)
-
-    mean, std = calculate_mean_std_for_last_n_days(daily_sizes, 'Onchain', last_n)
-    current_size = daily_sizes['Onchain'].sum()
-    t_delta = (target_size * 1024 - current_size) / mean
-    est_end_date = lday + timedelta(days=t_delta)
-
-    target_t_delta = (target_size * 1024 - current_size) / (int(onb_rate) * 1024)
-    target_end_date = lday + timedelta(days=target_t_delta)
-
-    cols = st.columns(4)
-    cols[0].metric("Expected finish date using mean onboarding rate", str(est_end_date),
-                   help="Expected finish date based on the mean daily onboarding rate over last {last_n} days".format(
-                       last_n=last_n))
-    cols[1].metric("Expected finish date using target onboarding rate", str(target_end_date),
-                   help="Expected finish date based on the target daily onboarding rate")
-    cols[2].metric("Mean daily onboarding rate over last {last_n} days".format(last_n=last_n), humanize(mean))
-    cols[3].metric("Standard Deviation of daily onboarding rate over last {last_n} days".format(last_n=last_n),
-                   humanize(std))
-
-    cols = st.columns(1)
-
-    estimated_line = pd.DataFrame({
-        'Day': [lday, est_end_date],
-        'TotalOnChain': [current_size, int(target_size) * 1024],
-
-    })
-
-    target_line = pd.DataFrame({
-        'Day': [lday, target_end_date],
-        'TotalOnChain': [current_size, int(target_size) * 1024]
-    })
-
-    # Create the base chart with color encoding and legend title
-    base = alt.Chart(daily_sizes).mark_line(size=4, color="#ff2b2b").transform_window(
-        sort=[{"field": "Day"}],
-        TotalOnChain="sum(Onchain)"
-    ).encode(x="Day:T", y="TotalOnChain:Q")
-
-    # Create the estimated and target lines with color encoding
-    est_line_plot = alt.Chart(estimated_line).mark_line(color='green').encode(x="Day:T", y="TotalOnChain:Q")
-    target_line_plot = alt.Chart(target_line).mark_line(color='blue').encode(x="Day:T", y="TotalOnChain:Q")
-
-    # Layer the three components with the base chart, estimated line, and target line
-    ch = alt.layer(base, est_line_plot, target_line_plot).configure_axisX(grid=False)
-
-    cols[0].altair_chart(ch, use_container_width=True)
+# with st.expander("### Experimental: Projection"):
+#     form = st.form(key='projection')
+#     c1, c2, c3 = st.columns(3)
+#     with c1:
+#         target_size = st.number_input("Full dataset size (TB)", min_value=0,
+#                                       value=1024)  # Defaults to 1 PiB for now, change it to LDN
+#     with c2:
+#         last_n = st.number_input("Number of days for window", min_value=2, value=14,
+#                                  help="Average onboarding rate is calculated over last n days, where n is the input of this field")
+#     with c3:
+#         onb_rate = st.number_input("Target onboarding rate (TB)/day", min_value=0, value=10)
+#
+#     mean, std = calculate_mean_std_for_last_n_days(daily_sizes, 'Onchain', last_n)
+#     current_size = daily_sizes['Onchain'].sum()
+#     t_delta = (target_size * 1024 - current_size) / mean
+#     est_end_date = lday + timedelta(days=t_delta)
+#
+#     target_t_delta = (target_size * 1024 - current_size) / (int(onb_rate) * 1024)
+#     target_end_date = lday + timedelta(days=target_t_delta)
+#
+#     cols = st.columns(4)
+#     cols[0].metric("Expected finish date using mean onboarding rate", str(est_end_date),
+#                    help="Expected finish date based on the mean daily onboarding rate over last {last_n} days".format(
+#                        last_n=last_n))
+#     cols[1].metric("Expected finish date using target onboarding rate", str(target_end_date),
+#                    help="Expected finish date based on the target daily onboarding rate")
+#     cols[2].metric("Mean daily onboarding rate over last {last_n} days".format(last_n=last_n), humanize(mean))
+#     cols[3].metric("Standard Deviation of daily onboarding rate over last {last_n} days".format(last_n=last_n),
+#                    humanize(std))
+#
+#     cols = st.columns(1)
+#
+#     estimated_line = pd.DataFrame({
+#         'Day': [lday, est_end_date],
+#         'TotalOnChain': [current_size, int(target_size) * 1024],
+#
+#     })
+#
+#     target_line = pd.DataFrame({
+#         'Day': [lday, target_end_date],
+#         'TotalOnChain': [current_size, int(target_size) * 1024]
+#     })
+#
+#     # Create the base chart with color encoding and legend title
+#     base = alt.Chart(daily_sizes).mark_line(size=4, color="#ff2b2b").transform_window(
+#         sort=[{"field": "Day"}],
+#         TotalOnChain="sum(Onchain)"
+#     ).encode(x="Day:T", y="TotalOnChain:Q")
+#
+#     # Create the estimated and target lines with color encoding
+#     est_line_plot = alt.Chart(estimated_line).mark_line(color='green').encode(x="Day:T", y="TotalOnChain:Q")
+#     target_line_plot = alt.Chart(target_line).mark_line(color='blue').encode(x="Day:T", y="TotalOnChain:Q")
+#
+#     # Layer the three components with the base chart, estimated line, and target line
+#     ch = alt.layer(base, est_line_plot, target_line_plot).configure_axisX(grid=False)
+#
+#     cols[0].altair_chart(ch, use_container_width=True)
