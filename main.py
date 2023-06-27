@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-
 import os
 from datetime import datetime, timedelta, timezone
+
 
 import altair as alt
 import pandas as pd
 import streamlit as st
+from client import get_client_name
 
 from database import top_clients_for_last_week, active_or_published_daily_size, copies_count_size, provider_item_counts, deal_count_by_status, terminated_deal_count_by_reason, index_age, total_active_or_published_daily_size
 
@@ -17,7 +18,6 @@ os.makedirs(CACHE, exist_ok=True)
 
 st.set_page_config(page_title=TITLE, page_icon=ICON, layout="wide")
 st.title(TITLE)
-
 
 def humanize(s):
     if s >= 1024 * 1024 * 1024:
