@@ -2,15 +2,13 @@
 import os
 from datetime import datetime, timedelta, timezone
 
-
 import altair as alt
 import pandas as pd
 import streamlit as st
-from client import get_client_name_by_client_id
 
 from database import top_clients_for_last_week, active_or_published_daily_size, copies_count_size, provider_item_counts, deal_count_by_status, terminated_deal_count_by_reason, index_age, total_active_or_published_daily_size
 
-TITLE = "Data Onboarding to Filecoin"
+TITLE = "Data Onboarding to Filecoin"	
 ICON = "./assets/filecoin-symbol.png"
 CACHE = "/tmp/spadecsvcache"
 
@@ -19,12 +17,6 @@ os.makedirs(CACHE, exist_ok=True)
 st.set_page_config(page_title=TITLE, page_icon=ICON, layout="wide")
 st.title(TITLE)
 
-if st.button('Rerun'):
-    st.experimental_rerun()
-
-print("result of test 1",get_client_name_by_client_id("f02230582"))
-print("result of test 2: unique (ex 02046762)",get_client_name_by_client_id("02046762"))
-print("result of default test (ex 01131298)", get_client_name_by_client_id("f01131298"))
 
 def humanize(s):
     if s >= 1024 * 1024 * 1024:
@@ -44,7 +36,8 @@ def temporal_bars(data, bin, period, ylim, state, color):
         y=alt.Y(f"sum({state}):Q", axis=alt.Axis(format=",.0f"), title=f"{state} Size",
                 scale=alt.Scale(domain=[0, ylim])),
         tooltip=[alt.Tooltip(f"{bin}(Day):T", title=period),
-                 alt.Tooltip("sum(Onchain):Q", format=",.0f", title="Onchain")],
+                 alt.Tooltip("sum(Onchain):Q", format=",.0f", title="Onchain"),
+                 alt.Tooltip("client_name:N", title="Client Name")],
         color=color
     ).interactive(bind_y=False).configure_axisX(grid=False)
 
@@ -81,8 +74,7 @@ query_params = st.experimental_get_query_params()
 default_ids = "01131298" # Internet archive
 if 'client_id' in query_params:
     default_ids = ",".join(query_params['client_id'])
-if 'client_name' in query_params:
-    default_ids = ",".join(query_params['client_name'])
+
 
 client_ids = st.sidebar.text_input("Comma separated list of client ids", default_ids)
 client_ids = get_client_ids(client_ids)
@@ -93,7 +85,7 @@ daily_sizes = active_or_published_daily_size(first_day=fday, last_day=lday, clie
 total_daily_sizes = total_active_or_published_daily_size()
 daily_sizes = daily_sizes.dropna(subset=["Day"])
 
-print(daily_sizes,'daily_sizes')
+
 st.subheader("Aggregated")
 base = alt.Chart(total_daily_sizes).encode(x=alt.X("Day:T"))
 ch = alt.layer(
@@ -139,6 +131,8 @@ tbs = st.tabs(["Accumulated", "Daily", "Weekly", "Monthly", "Quarterly", "Yearly
 
 rt = daily_sizes.set_index("Day").sort_index()
 rtv = rt[["Onchain"]]
+
+
 ranges = {
     "Day": rtv.groupby(pd.Grouper(freq="D")).sum().to_numpy().max(),
     "Week": rtv.groupby(pd.Grouper(freq="W")).sum().to_numpy().max(),

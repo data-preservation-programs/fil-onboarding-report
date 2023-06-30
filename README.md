@@ -46,8 +46,3 @@ runOnSave = true
 ```
 
 Access http://localhost:8501/ in a web browser for interactive insights.
-
-<!-- docker run --rm -it -p 8501:8501 --env-file=.env --server.liveReload=true=poll fil-onboarding-report
-
-streamlit run --server.enableCORS false --server.port 8501 --server.runOnSave true main.py
-streamlit run --server.port=8501 --server.fileWatcherType=poll main.py -->
