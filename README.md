@@ -26,7 +26,7 @@ $ docker compose up -d
 There is a special version of the docker container intended for live updates and development
 
 ```
-$ docker image build -t fil-onboarding-report -f Dockerfile .
+$ docker image build -t fil-onboarding-report -f Dockerfile-live .
 
 $ docker container run --rm -it -p 8501:8501 --env-file=.env -v "$(pwd):/app" fil-onboarding-report
 ```

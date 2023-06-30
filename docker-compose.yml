@@ -1,6 +1,6 @@
 services:
   filecoin:
-    image: ia2fil
+    image: fil-onboarding-report
     build: ./
     env_file: .env
     networks:
