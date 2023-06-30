@@ -14,4 +14,5 @@ RUN         pip install \
               psycopg2 \
               streamlit
 
-COPY        . ./
+#For live development mount the application source in the container rather than copying it in
+#COPY        . ./
