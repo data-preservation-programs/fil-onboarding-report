@@ -10,7 +10,7 @@ services:
     labels:
       caddy: ${PROXYHOST}
       caddy.reverse_proxy: "{{upstreams 8501}}"
-
+      caddy.watch: true
 networks:
   caddy:
     external: true

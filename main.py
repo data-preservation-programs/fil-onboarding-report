@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 import altair as alt
 import pandas as pd
 import streamlit as st
-from client import get_client_name
+from client import get_client_name_by_client_id
 
 from database import top_clients_for_last_week, active_or_published_daily_size, copies_count_size, provider_item_counts, deal_count_by_status, terminated_deal_count_by_reason, index_age, total_active_or_published_daily_size
 
@@ -18,6 +18,13 @@ os.makedirs(CACHE, exist_ok=True)
 
 st.set_page_config(page_title=TITLE, page_icon=ICON, layout="wide")
 st.title(TITLE)
+
+if st.button('Rerun'):
+    st.experimental_rerun()
+
+print("result of test 1",get_client_name_by_client_id("f02230582"))
+print("result of test 2: unique (ex 02046762)",get_client_name_by_client_id("02046762"))
+print("result of default test (ex 01131298)", get_client_name_by_client_id("f01131298"))
 
 def humanize(s):
     if s >= 1024 * 1024 * 1024:
@@ -41,7 +48,6 @@ def temporal_bars(data, bin, period, ylim, state, color):
         color=color
     ).interactive(bind_y=False).configure_axisX(grid=False)
 
-
 def calculate_mean_std_for_last_n_days(df, col, n=14):
     window = df[col].tail(n + 1).head(n)  # ignore yesterday
 
@@ -59,7 +65,6 @@ def get_client_ids(ids):
     return [int_client_id(i) for i in client_identifiers]
 
 
-# Calculate last and first day
 ldf = datetime.today().date()
 fdf = ldf.replace(year=ldf.year - 1)
 fday, lday = st.sidebar.slider("Date Range", value=(fdf, ldf), min_value=fdf, max_value=ldf)
@@ -76,6 +81,8 @@ query_params = st.experimental_get_query_params()
 default_ids = "01131298" # Internet archive
 if 'client_id' in query_params:
     default_ids = ",".join(query_params['client_id'])
+if 'client_name' in query_params:
+    default_ids = ",".join(query_params['client_name'])
 
 client_ids = st.sidebar.text_input("Comma separated list of client ids", default_ids)
 client_ids = get_client_ids(client_ids)
@@ -86,7 +93,7 @@ daily_sizes = active_or_published_daily_size(first_day=fday, last_day=lday, clie
 total_daily_sizes = total_active_or_published_daily_size()
 daily_sizes = daily_sizes.dropna(subset=["Day"])
 
-
+print(daily_sizes,'daily_sizes')
 st.subheader("Aggregated")
 base = alt.Chart(total_daily_sizes).encode(x=alt.X("Day:T"))
 ch = alt.layer(
@@ -113,7 +120,7 @@ cols[2].metric("4+ Replications unique data size", humanize(cp_ct_sz[cp_ct_sz.Co
                help="Unique active/published pieces with at least four replications in the Filecoin network")
 cols[3].metric("4+ Replications unique files", f"{cp_ct_sz[cp_ct_sz.Copies >= 4].Count.sum():,.0f} files",
                help="Unique active/published pieces with at least four replications in the Filecoin network")
-#
+
 cols = st.columns(4)
 last = daily_sizes[daily_sizes["Day"] >= lday - pd.DateOffset(days=1)]
 cols[0].metric("Onboarded Last Day", humanize(last.Onchain.sum()),
@@ -145,23 +152,23 @@ ch = alt.layer(
     base.mark_area().transform_window(
         sort=[{"field": "Day"}],
         TotalOnChain="sum(Onchain)"
-    ).encode(y="TotalOnChain:Q", color="client_id"),
+    ).encode(y="TotalOnChain:Q", color="client_name"),
 ).interactive(bind_y=False).configure_axisX(grid=False)
 tbs[0].altair_chart(ch, use_container_width=True)
 
-ch = temporal_bars(daily_sizes, "utcyearmonthdate", "Day", ranges["Day"], "Onchain", "client_id")
+ch = temporal_bars(daily_sizes, "utcyearmonthdate", "Day", ranges["Day"], "Onchain", "client_name")
 tbs[1].altair_chart(ch, use_container_width=True)
 
-ch = temporal_bars(daily_sizes, "yearweek", "Week", ranges["Week"], "Onchain", "client_id")
+ch = temporal_bars(daily_sizes, "yearweek", "Week", ranges["Week"], "Onchain", "client_name")
 tbs[2].altair_chart(ch, use_container_width=True)
 
-ch = temporal_bars(daily_sizes, "yearmonth", "Month", ranges["Month"], "Onchain", "client_id")
+ch = temporal_bars(daily_sizes, "yearmonth", "Month", ranges["Month"], "Onchain", "client_name")
 tbs[3].altair_chart(ch, use_container_width=True)
 
-ch = temporal_bars(daily_sizes, "yearquarter", "Quarter", ranges["Quarter"], "Onchain", "client_id")
+ch = temporal_bars(daily_sizes, "yearquarter", "Quarter", ranges["Quarter"], "Onchain", "client_name")
 tbs[4].altair_chart(ch, use_container_width=True)
 
-ch = temporal_bars(daily_sizes, "year", "Year", ranges["Year"], "Onchain", "client_id")
+ch = temporal_bars(daily_sizes, "year", "Year", ranges["Year"], "Onchain", "client_name")
 tbs[5].altair_chart(ch, use_container_width=True)
 
 pro_ct = provider_item_counts(first_day=fday, last_day=lday, client_ids=client_ids)
