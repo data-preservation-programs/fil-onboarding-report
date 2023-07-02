@@ -1,4 +1,4 @@
-#!/usr/bin/env -S docker image build -t ia2fil . -f
+#!/usr/bin/env -S docker image build -t fil-onboarding-report . -f
 
 FROM        python:3
 
