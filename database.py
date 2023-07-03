@@ -4,9 +4,11 @@ import pandas as pd
 import psycopg2
 import streamlit as st
 
-from client import get_client_name_by_client_id
+# from client import get_client_name_by_client_id
 
 # Helper functions
+
+
 def int_client_id(client):
     if client.startswith("f"):
         return client[1:].strip()
@@ -53,8 +55,8 @@ def active_or_published_daily_size(first_day, last_day, client_ids):
     ).rename(columns={"dy": "PTime", "size": "Onchain", "pieces": "Pieces"})
 
     df["Day"] = pd.to_datetime(df.PTime).dt.tz_localize(None)
-    df["client_id"] = "f" +"0"+ df["client_id"].astype(str)
-    df['client_name'] = df['client_id'].apply(get_client_name_by_client_id)
+    df["client_id"] = "f" + "0" + df["client_id"].astype(str)
+    # df['client_name'] = df['client_id'].apply(get_client_name_by_client_id)
     return df
 
 
