@@ -62,7 +62,7 @@ def get_client_ids(ids):
 
 
 def get_client_name(client_id):
-    stats_client = StatsClient()
+    stats_client = StatsClient("https://api.datacapstats.io")
     return stats_client.add_client_name_by_client_id(client_id)
 
 

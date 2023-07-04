@@ -1,41 +1,37 @@
-import requests
+import requests as re
 
 
 class StatsClient:
-    api_url = "https://api.datacapstats.io/api/getVerifiedClients?limit=none"
-
-    def __init__(self):
+    def __init__(self, api_url="https://api.datacapstats.io"):
         self.data = None
+        self.api_url = api_url
         self.result = {}
 
-    def list_data(self):
-        if not self.data:
-            response = requests.get(StatsClient.api_url)
-            if response.status_code == 200:
-                data = response.json()
-                self.data = data['data']
-
-        return self.data
+    def get_verified_clients(self, limit=None):
+        url = self.api_url + "/api/getVerifiedClients?limit={limit}".format(limit=limit)
+        resp = re.get(url)
+        if resp.status_code == 200:
+            self.data = resp.json()['data']
 
     def add_client_name_by_client_id(self, client_id):
         if client_id in self.result:
             return self.result[client_id]
 
-        if self.list_data() is not None:
+        if self.data:
             client_names = ""
 
-            for entry in self.list_data():
-                addressId = entry.get('addressId')
+            for entry in self.data:
+                address_id = entry.get('addressId')
                 name = entry.get('name')
-                orgName = entry.get('orgName')
+                org_name = entry.get('orgName')
 
-                if addressId == client_id:
+                if address_id == client_id:
                     client_names = name
 
                     # check for empty values of name and orgName, if one is empty then the other one will get placed
                     if name == "":
-                        client_names = orgName
-                    if name == "" and orgName == "":
+                        client_names = org_name
+                    if name == "" and org_name == "":
                         client_names = client_id
                     break
 
