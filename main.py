@@ -9,6 +9,7 @@ import streamlit as st
 from database import top_clients_for_last_week, active_or_published_daily_size, copies_count_size, provider_item_counts, deal_count_by_status, terminated_deal_count_by_reason, index_age, total_active_or_published_daily_size
 
 from client import StatsClient
+from utils import int_client_id
 
 TITLE = "Data Onboarding to Filecoin"
 ICON = "./assets/filecoin-symbol.png"
@@ -50,26 +51,14 @@ def calculate_mean_std_for_last_n_days(df, col, n=14):
     return window.mean(), window.std()
 
 
-def int_client_id(client):
-    if client.startswith("f"):
-        return client[1:].strip()
-    return client.strip()
-
-
 def get_client_ids(ids):
     client_identifiers = ids.split(",")
     return [int_client_id(i) for i in client_identifiers]
 
 
-def get_client_name(client_id):
-    stats_client = StatsClient("https://api.datacapstats.io")
-    return stats_client.add_client_name_by_client_id(client_id)
-
-
 ldf = datetime.today().date()
 fdf = ldf.replace(year=ldf.year - 1)
-fday, lday = st.sidebar.slider("Date Range", value=(
-    fdf, ldf), min_value=fdf, max_value=ldf)
+fday, lday = st.sidebar.slider("Date Range", value=(fdf, ldf), min_value=fdf, max_value=ldf)
 lday = lday + timedelta(1)
 
 size_df = top_clients_for_last_week(
@@ -77,8 +66,7 @@ size_df = top_clients_for_last_week(
 size_df["Onchain"] = size_df["Onchain"] * 1.0 / 1024
 
 st.sidebar.markdown("## Top 10 onboarders in the last week")
-st.sidebar.dataframe(size_df.style.format(
-    {"Onchain": "{:,.0f} TB"}), use_container_width=True)
+st.sidebar.dataframe(size_df.style.format({"Onchain": "{:,.0f} TB"}), use_container_width=True)
 
 # Set client id
 query_params = st.experimental_get_query_params()
@@ -87,19 +75,17 @@ if 'client_id' in query_params:
     default_ids = ",".join(query_params['client_id'])
 
 
-client_ids = st.sidebar.text_input(
-    "Comma separated list of client ids", default_ids)
+client_ids = st.sidebar.text_input("Comma separated list of client ids", default_ids)
 client_ids = get_client_ids(client_ids)
 
-# Set client name
-client_name = "f01131298"
-# client_name = [get_client_name(client_id) for client_id in client_ids]
+# Setup stats client and get client names
+stats_client = StatsClient("https://api.datacapstats.io")
+stats_client.calculate_client_id_to_name_map()
+client_names = [stats_client.get_client_name(client_id) for client_id in client_ids]
 
 # Run database queries
-cp_ct_sz = copies_count_size(
-    first_day=fday, last_day=lday, client_ids=client_ids)
-daily_sizes = active_or_published_daily_size(
-    first_day=fday, last_day=lday, client_ids=client_ids)
+cp_ct_sz = copies_count_size(first_day=fday, last_day=lday, client_ids=client_ids)
+daily_sizes = active_or_published_daily_size(first_day=fday, last_day=lday, client_ids=client_ids)
 total_daily_sizes = total_active_or_published_daily_size()
 daily_sizes = daily_sizes.dropna(subset=["Day"])
 
@@ -120,7 +106,7 @@ cols[0].metric("Total onboarded data", humanize(
 
 st.subheader("Client specific")
 cols = st.columns(1)
-cols[0].metric("Total onboarded data", humanize(
+cols[0].metric("Total onboarded data for {client_names}".format(client_names=client_names), humanize(
     daily_sizes.Onchain.sum()), help="Total onboarded data")
 
 cols = st.columns(4)
@@ -167,12 +153,12 @@ ch = alt.layer(
     base.mark_area().transform_window(
         sort=[{"field": "Day"}],
         TotalOnChain="sum(Onchain)"
-    ).encode(y="TotalOnChain:Q", color=client_name),
+    ).encode(y="TotalOnChain:Q", color=client_names),
 ).interactive(bind_y=False).configure_axisX(grid=False)
 tbs[0].altair_chart(ch, use_container_width=True)
 
 ch = temporal_bars(daily_sizes, "utcyearmonthdate", "Day",
-                   ranges["Day"], "Onchain", client_name)
+                   ranges["Day"], "Onchain", client_names)
 tbs[1].altair_chart(ch, use_container_width=True)
 
 ch = temporal_bars(daily_sizes, "yearweek", "Week",
