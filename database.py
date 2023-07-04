@@ -48,7 +48,6 @@ def active_or_published_daily_size(first_day, last_day, client_ids):
 
     df["Day"] = pd.to_datetime(df.PTime).dt.tz_localize(None)
     df["client_id"] = "f0" + df["client_id"].astype(str)
-    # df['client_name'] = df['client_id'].apply(get_client_name_by_client_id)
     return df
 
 
