@@ -33,7 +33,8 @@ def humanize(s):
 
 def temporal_bars(data, bin, period, ylim, state, color):
     ch = alt.Chart(data, height=250)
-    ch = ch.mark_bar(color="#ff2b2b") if state == "Onchain" else ch.mark_bar()
+    ch = ch.mark_bar(
+        color="#0090FF") if state == "Onchain" else ch.mark_bar()
     return ch.encode(
         x=alt.X(f"{bin}(Day):T", title=period),
         y=alt.Y(f"sum({state}):Q", axis=alt.Axis(format=",.0f"), title=f"{state} Size",
@@ -101,7 +102,9 @@ daily_sizes['client_name'] = daily_sizes['client_id'].apply(
     stats_client.get_client_name)
 
 client_names = daily_sizes['client_name'].tolist()
-client_names_joined = ', '.join(client_names)
+client_names_unique = daily_sizes['client_name'].unique().tolist()
+client_names_joined = ', '.join(client_names_unique)
+
 
 st.subheader("Aggregated")
 base = alt.Chart(total_daily_sizes).encode(x=alt.X("Day:T"))
