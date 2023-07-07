@@ -6,7 +6,10 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+from streamlitstyle import hide_streamlit_style
+
 from database import top_clients_for_last_week, active_or_published_daily_size, copies_count_size, provider_item_counts, deal_count_by_status, terminated_deal_count_by_reason, index_age, total_active_or_published_daily_size
+
 
 from client import StatsClient
 from utils import int_client_id
@@ -18,6 +21,8 @@ CACHE = "/tmp/spadecsvcache"
 os.makedirs(CACHE, exist_ok=True)
 
 st.set_page_config(page_title=TITLE, page_icon=ICON, layout="wide")
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 st.title(TITLE)
 
 
