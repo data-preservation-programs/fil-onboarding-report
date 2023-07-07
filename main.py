@@ -6,12 +6,9 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from streamlitstyle import hide_streamlit_style
-
-from database import top_clients_for_last_week, active_or_published_daily_size, copies_count_size, provider_item_counts, deal_count_by_status, terminated_deal_count_by_reason, index_age, total_active_or_published_daily_size
-
-
+import database as db
 from client import StatsClient
+from streamlitstyle import hide_streamlit_style
 from utils import int_client_id
 
 TITLE = "Data Onboarding to Filecoin"
@@ -69,7 +66,7 @@ fday, lday = st.sidebar.slider("Date Range", value=(
     fdf, ldf), min_value=fdf, max_value=ldf)
 lday = lday + timedelta(1)
 
-size_df = top_clients_for_last_week(
+size_df = db.top_clients_for_last_week(
     first_day=lday - pd.DateOffset(weeks=1), last_day=lday, top_n=10)
 size_df["Onchain"] = size_df["Onchain"] * 1.0 / 1024
 
@@ -83,7 +80,6 @@ default_ids = "01131298"  # Internet archive
 if 'client_id' in query_params:
     default_ids = ",".join(query_params['client_id'])
 
-
 client_ids = st.sidebar.text_input(
     "Comma separated list of Filecoin Address ids (integer addresses ex: 01131298 works as well)", default_ids)
 client_ids = get_client_ids(client_ids)
@@ -92,15 +88,13 @@ client_ids = get_client_ids(client_ids)
 stats_client = StatsClient()
 stats_client.calculate_client_id_to_name_map()
 
-
 # Run database queries
-cp_ct_sz = copies_count_size(
+cp_ct_sz = db.copies_count_size(
     first_day=fday, last_day=lday, client_ids=client_ids)
-daily_sizes = active_or_published_daily_size(
+daily_sizes = db.active_or_published_daily_size(
     first_day=fday, last_day=lday, client_ids=client_ids)
-total_daily_sizes = total_active_or_published_daily_size()
+total_daily_sizes = db.total_active_or_published_daily_size()
 daily_sizes = daily_sizes.dropna(subset=["Day"])
-
 
 # Daily sizes will have a new client_name column with names from StatsClient populated based on a given client_id
 daily_sizes['client_name'] = daily_sizes['client_id'].apply(
@@ -109,7 +103,6 @@ daily_sizes['client_name'] = daily_sizes['client_id'].apply(
 client_names = daily_sizes['client_name'].tolist()
 client_names_unique = daily_sizes['client_name'].unique().tolist()
 client_names_joined = ', '.join(client_names_unique)
-
 
 st.subheader("Aggregated")
 base = alt.Chart(total_daily_sizes).encode(x=alt.X("Day:T"))
@@ -155,11 +148,10 @@ cols[3].metric("Onboarded Last Year", humanize(last.Onchain.sum()),
                help="Total packed and on-chain sizes of unique files of the last year")
 
 tbs = st.tabs(["Accumulated", "Daily", "Weekly", "Monthly",
-              "Quarterly", "Yearly", "Status", "Data"])
+               "Quarterly", "Yearly", "Status", "Data"])
 
 rt = daily_sizes.set_index("Day").sort_index()
 rtv = rt[["Onchain"]]
-
 
 ranges = {
     "Day": rtv.groupby(pd.Grouper(freq="D")).sum().to_numpy().max(),
@@ -198,13 +190,13 @@ ch = temporal_bars(daily_sizes, "year", "Year",
                    ranges["Year"], "Onchain", "client_name")
 tbs[5].altair_chart(ch, use_container_width=True)
 
-pro_ct = provider_item_counts(
+pro_ct = db.provider_item_counts(
     first_day=fday, last_day=lday, client_ids=client_ids)
-dl_st_ct = deal_count_by_status(
+dl_st_ct = db.deal_count_by_status(
     first_day=fday, last_day=lday, client_ids=client_ids)
-trm_ct = terminated_deal_count_by_reason(
+trm_ct = db.terminated_deal_count_by_reason(
     first_day=fday, last_day=lday, client_ids=client_ids)
-idx_age = index_age()
+idx_age = db.index_age()
 
 cols = tbs[6].columns((3, 2, 2))
 with cols[0]:
@@ -219,7 +211,7 @@ with cols[1]:
         theta="Count:Q",
         color=alt.Color("Status:N",
                         scale=alt.Scale(domain=["active", "published", "terminated"], range=[
-                                        "teal", "orange", "red"]),
+                            "teal", "orange", "red"]),
                         legend=alt.Legend(title="Deal Status", orient="top")),
         tooltip=["Status:N", alt.Tooltip("Count:Q", format=",")]
     )
