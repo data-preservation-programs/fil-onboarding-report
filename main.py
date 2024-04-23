@@ -22,6 +22,17 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 st.title(TITLE)
 
+st.warning(
+    """
+    This dashboard was deprecated on 2024-04-20.
+
+    Here are great existing and working Filecoin dashboards that cover similar topics:
+
+    * [Starboard](https://dashboard.starboard.ventures/dashboard)
+    * [Filecoin Dune Daily Metrics](https://dune.com/kalen/filecoin-daily-metrics)
+    * [Filecoin Pulse](https://filecoinpulse.pages.dev/) (PoC)
+"""
+)
 
 def humanize(s):
     if s >= 1024 * 1024 * 1024:
