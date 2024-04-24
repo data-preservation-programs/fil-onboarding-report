@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-import os
-from datetime import datetime, timedelta, timezone
+# import os
+# from datetime import datetime, timedelta, timezone
 
-import altair as alt
-import pandas as pd
+# import altair as alt
+# import pandas as pd
 import streamlit as st
 
-import database as db
-from client import StatsClient
+# import database as db
+# from client import StatsClient
 from streamlitstyle import hide_streamlit_style
-from utils import int_client_id
+# from utils import int_client_id
 
 TITLE = "Data Onboarding to Filecoin"
 ICON = "./assets/filecoin-symbol.png"
 CACHE = "/tmp/spadecsvcache"
 
-os.makedirs(CACHE, exist_ok=True)
+# os.makedirs(CACHE, exist_ok=True)
 
 st.set_page_config(page_title=TITLE, page_icon=ICON, layout="wide")
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -34,230 +34,230 @@ st.warning(
 """
 )
 
-def humanize(s):
-    if s >= 1024 * 1024 * 1024:
-        return f"{s / 1024 / 1024 / 1024:,.2f} EB"
-    if s >= 1024 * 1024:
-        return f"{s / 1024 / 1024:,.2f} PB"
-    if s >= 1024:
-        return f"{s / 1024:,.1f} TB"
-    return f"{s:,.1f} GB"
+# def humanize(s):
+#     if s >= 1024 * 1024 * 1024:
+#         return f"{s / 1024 / 1024 / 1024:,.2f} EB"
+#     if s >= 1024 * 1024:
+#         return f"{s / 1024 / 1024:,.2f} PB"
+#     if s >= 1024:
+#         return f"{s / 1024:,.1f} TB"
+#     return f"{s:,.1f} GB"
 
 
-def temporal_bars(data, bin, period, ylim, state, color):
-    ch = alt.Chart(data, height=250)
-    ch = ch.mark_bar(
-        color="#0090FF") if state == "Onchain" else ch.mark_bar()
-    return ch.encode(
-        x=alt.X(f"{bin}(Day):T", title=period),
-        y=alt.Y(f"sum({state}):Q", axis=alt.Axis(format=",.0f"), title=f"{state} Size",
-                scale=alt.Scale(domain=[0, ylim])),
-        tooltip=[alt.Tooltip(f"{bin}(Day):T", title=period),
-                 alt.Tooltip("sum(Onchain):Q", format=",.0f", title="Onchain"),
-                 alt.Tooltip("client_name:N", title="Client Name")],
-        color=color
+# def temporal_bars(data, bin, period, ylim, state, color):
+#     ch = alt.Chart(data, height=250)
+#     ch = ch.mark_bar(
+#         color="#0090FF") if state == "Onchain" else ch.mark_bar()
+#     return ch.encode(
+#         x=alt.X(f"{bin}(Day):T", title=period),
+#         y=alt.Y(f"sum({state}):Q", axis=alt.Axis(format=",.0f"), title=f"{state} Size",
+#                 scale=alt.Scale(domain=[0, ylim])),
+#         tooltip=[alt.Tooltip(f"{bin}(Day):T", title=period),
+#                  alt.Tooltip("sum(Onchain):Q", format=",.0f", title="Onchain"),
+#                  alt.Tooltip("client_name:N", title="Client Name")],
+#         color=color
 
-    ).interactive(bind_y=False).configure_axisX(grid=False)
-
-
-def calculate_mean_std_for_last_n_days(df, col, n=14):
-    window = df[col].tail(n + 1).head(n)  # ignore yesterday
-
-    return window.mean(), window.std()
+#     ).interactive(bind_y=False).configure_axisX(grid=False)
 
 
-def get_client_ids(ids):
-    client_identifiers = ids.split(",")
-    return [int_client_id(i) for i in client_identifiers]
+# def calculate_mean_std_for_last_n_days(df, col, n=14):
+#     window = df[col].tail(n + 1).head(n)  # ignore yesterday
+
+#     return window.mean(), window.std()
 
 
-ldf = datetime.today().date()
-fdf = ldf.replace(year=ldf.year - 1)
-fday, lday = st.sidebar.slider("Date Range", value=(
-    fdf, ldf), min_value=fdf, max_value=ldf)
-lday = lday + timedelta(1)
+# def get_client_ids(ids):
+#     client_identifiers = ids.split(",")
+#     return [int_client_id(i) for i in client_identifiers]
 
-size_df = db.top_clients_for_last_week(
-    first_day=lday - pd.DateOffset(weeks=1), last_day=lday, top_n=10)
-size_df["Onchain"] = size_df["Onchain"] * 1.0 / 1024
 
-st.sidebar.markdown("## Top 10 onboarders in the last week")
-st.sidebar.dataframe(size_df.style.format(
-    {"Onchain": "{:,.0f} TB"}), use_container_width=True)
+# ldf = datetime.today().date()
+# fdf = ldf.replace(year=ldf.year - 1)
+# fday, lday = st.sidebar.slider("Date Range", value=(
+#     fdf, ldf), min_value=fdf, max_value=ldf)
+# lday = lday + timedelta(1)
 
-# Set client id
-query_params = st.experimental_get_query_params()
-default_ids = "01131298"  # Internet archive
-if 'client_id' in query_params:
-    default_ids = ",".join(query_params['client_id'])
+# size_df = db.top_clients_for_last_week(
+#     first_day=lday - pd.DateOffset(weeks=1), last_day=lday, top_n=10)
+# size_df["Onchain"] = size_df["Onchain"] * 1.0 / 1024
 
-client_ids = st.sidebar.text_input(
-    "Comma separated list of Filecoin Address ids (integer addresses ex: 01131298 works as well)", default_ids)
-client_ids = get_client_ids(client_ids)
+# st.sidebar.markdown("## Top 10 onboarders in the last week")
+# st.sidebar.dataframe(size_df.style.format(
+#     {"Onchain": "{:,.0f} TB"}), use_container_width=True)
 
-# Setup stats client and get client names
-stats_client = StatsClient()
-stats_client.calculate_client_id_to_name_map()
+# # Set client id
+# query_params = st.experimental_get_query_params()
+# default_ids = "01131298"  # Internet archive
+# if 'client_id' in query_params:
+#     default_ids = ",".join(query_params['client_id'])
 
-# Run database queries
-cp_ct_sz = db.copies_count_size(
-    first_day=fday, last_day=lday, client_ids=client_ids)
-daily_sizes = db.active_or_published_daily_size(
-    first_day=fday, last_day=lday, client_ids=client_ids)
-total_daily_sizes = db.total_active_or_published_daily_size()
-daily_sizes = daily_sizes.dropna(subset=["Day"])
+# client_ids = st.sidebar.text_input(
+#     "Comma separated list of Filecoin Address ids (integer addresses ex: 01131298 works as well)", default_ids)
+# client_ids = get_client_ids(client_ids)
 
-# Daily sizes will have a new client_name column with names from StatsClient populated based on a given client_id
-daily_sizes['client_name'] = daily_sizes['client_id'].apply(
-    stats_client.get_client_name)
+# # Setup stats client and get client names
+# stats_client = StatsClient()
+# stats_client.calculate_client_id_to_name_map()
 
-client_names = daily_sizes['client_name'].tolist()
-client_names_unique = daily_sizes['client_name'].unique().tolist()
-client_names_joined = ', '.join(client_names_unique)
+# # Run database queries
+# cp_ct_sz = db.copies_count_size(
+#     first_day=fday, last_day=lday, client_ids=client_ids)
+# daily_sizes = db.active_or_published_daily_size(
+#     first_day=fday, last_day=lday, client_ids=client_ids)
+# total_daily_sizes = db.total_active_or_published_daily_size()
+# daily_sizes = daily_sizes.dropna(subset=["Day"])
 
-st.subheader("Aggregated")
-base = alt.Chart(total_daily_sizes).encode(x=alt.X("Day:T"))
-ch = alt.layer(
-    base.mark_line().transform_window(
-        sort=[{"field": "Day"}],
-        TotalOnChain="sum(Onchain)"
-    ).encode(y="TotalOnChain:Q"),
-).interactive(bind_y=False).configure_axisX(grid=False)
-st.altair_chart(ch, use_container_width=True)
+# # Daily sizes will have a new client_name column with names from StatsClient populated based on a given client_id
+# daily_sizes['client_name'] = daily_sizes['client_id'].apply(
+#     stats_client.get_client_name)
 
-cols = st.columns(1)
-cols[0].metric("Total onboarded data", humanize(
-    total_daily_sizes.Onchain.sum()), help="Total onboarded data")
+# client_names = daily_sizes['client_name'].tolist()
+# client_names_unique = daily_sizes['client_name'].unique().tolist()
+# client_names_joined = ', '.join(client_names_unique)
 
-st.subheader("Client specific")
-cols = st.columns(1)
-cols[0].metric("Total onboarded data for **{client_names}**".format(client_names=client_names_joined), humanize(
-    daily_sizes.Onchain.sum()), help="Total onboarded data")
+# st.subheader("Aggregated")
+# base = alt.Chart(total_daily_sizes).encode(x=alt.X("Day:T"))
+# ch = alt.layer(
+#     base.mark_line().transform_window(
+#         sort=[{"field": "Day"}],
+#         TotalOnChain="sum(Onchain)"
+#     ).encode(y="TotalOnChain:Q"),
+# ).interactive(bind_y=False).configure_axisX(grid=False)
+# st.altair_chart(ch, use_container_width=True)
 
-cols = st.columns(4)
-cols[0].metric("Unique data size", humanize(cp_ct_sz.Size.sum()), help="Total unique active/published pieces in the "
-                                                                       "Filecoin network")
-cols[1].metric("Unique files", f"{cp_ct_sz.Count.sum():,.0f} files", help="Total unique active/published pieces in "
-                                                                          "the Filecoin network")
-cols[2].metric("4+ Replications unique data size", humanize(cp_ct_sz[cp_ct_sz.Copies >= 4].Size.sum()),
-               help="Unique active/published pieces with at least four replications in the Filecoin network")
-cols[3].metric("4+ Replications unique files", f"{cp_ct_sz[cp_ct_sz.Copies >= 4].Count.sum():,.0f} files",
-               help="Unique active/published pieces with at least four replications in the Filecoin network")
+# cols = st.columns(1)
+# cols[0].metric("Total onboarded data", humanize(
+#     total_daily_sizes.Onchain.sum()), help="Total onboarded data")
 
-cols = st.columns(4)
-last = daily_sizes[daily_sizes["Day"] >= lday - pd.DateOffset(days=1)]
-cols[0].metric("Onboarded Last Day", humanize(last.Onchain.sum()),
-               help="Total packed and on-chain sizes of unique files of the last day")
-last = daily_sizes[daily_sizes["Day"] >= lday - pd.DateOffset(days=7)]
-cols[1].metric("Onboarded Last Week", humanize(last.Onchain.sum()),
-               help="Total packed and on-chain sizes of unique files of the last week")
-last = daily_sizes[daily_sizes["Day"] >= lday - pd.DateOffset(days=30)]
-cols[2].metric("Onboarded Last Month", humanize(last.Onchain.sum()),
-               help="Total packed and on-chain sizes of unique files of the last month")
-last = daily_sizes[daily_sizes["Day"] >= lday - pd.DateOffset(days=365)]
-cols[3].metric("Onboarded Last Year", humanize(last.Onchain.sum()),
-               help="Total packed and on-chain sizes of unique files of the last year")
+# st.subheader("Client specific")
+# cols = st.columns(1)
+# cols[0].metric("Total onboarded data for **{client_names}**".format(client_names=client_names_joined), humanize(
+#     daily_sizes.Onchain.sum()), help="Total onboarded data")
 
-tbs = st.tabs(["Accumulated", "Daily", "Weekly", "Monthly",
-               "Quarterly", "Yearly", "Status", "Data"])
+# cols = st.columns(4)
+# cols[0].metric("Unique data size", humanize(cp_ct_sz.Size.sum()), help="Total unique active/published pieces in the "
+#                                                                        "Filecoin network")
+# cols[1].metric("Unique files", f"{cp_ct_sz.Count.sum():,.0f} files", help="Total unique active/published pieces in "
+#                                                                           "the Filecoin network")
+# cols[2].metric("4+ Replications unique data size", humanize(cp_ct_sz[cp_ct_sz.Copies >= 4].Size.sum()),
+#                help="Unique active/published pieces with at least four replications in the Filecoin network")
+# cols[3].metric("4+ Replications unique files", f"{cp_ct_sz[cp_ct_sz.Copies >= 4].Count.sum():,.0f} files",
+#                help="Unique active/published pieces with at least four replications in the Filecoin network")
 
-rt = daily_sizes.set_index("Day").sort_index()
-rtv = rt[["Onchain"]]
+# cols = st.columns(4)
+# last = daily_sizes[daily_sizes["Day"] >= lday - pd.DateOffset(days=1)]
+# cols[0].metric("Onboarded Last Day", humanize(last.Onchain.sum()),
+#                help="Total packed and on-chain sizes of unique files of the last day")
+# last = daily_sizes[daily_sizes["Day"] >= lday - pd.DateOffset(days=7)]
+# cols[1].metric("Onboarded Last Week", humanize(last.Onchain.sum()),
+#                help="Total packed and on-chain sizes of unique files of the last week")
+# last = daily_sizes[daily_sizes["Day"] >= lday - pd.DateOffset(days=30)]
+# cols[2].metric("Onboarded Last Month", humanize(last.Onchain.sum()),
+#                help="Total packed and on-chain sizes of unique files of the last month")
+# last = daily_sizes[daily_sizes["Day"] >= lday - pd.DateOffset(days=365)]
+# cols[3].metric("Onboarded Last Year", humanize(last.Onchain.sum()),
+#                help="Total packed and on-chain sizes of unique files of the last year")
 
-ranges = {
-    "Day": rtv.groupby(pd.Grouper(freq="D")).sum().to_numpy().max(),
-    "Week": rtv.groupby(pd.Grouper(freq="W")).sum().to_numpy().max(),
-    "Month": rtv.groupby(pd.Grouper(freq="M")).sum().to_numpy().max(),
-    "Quarter": rtv.groupby(pd.Grouper(freq="Q")).sum().to_numpy().max(),
-    "Year": rtv.groupby(pd.Grouper(freq="Y")).sum().to_numpy().max()
-}
+# tbs = st.tabs(["Accumulated", "Daily", "Weekly", "Monthly",
+#                "Quarterly", "Yearly", "Status", "Data"])
 
-base = alt.Chart(daily_sizes).encode(x=alt.X("Day:T"))
-ch = alt.layer(
-    base.mark_area().transform_window(
-        sort=[{"field": "Day"}],
-        TotalOnChain="sum(Onchain)"
-    ).encode(y="TotalOnChain:Q", color="client_name"),
-).interactive(bind_y=False).configure_axisX(grid=False)
-tbs[0].altair_chart(ch, use_container_width=True)
+# rt = daily_sizes.set_index("Day").sort_index()
+# rtv = rt[["Onchain"]]
 
-ch = temporal_bars(daily_sizes, "utcyearmonthdate", "Day",
-                   ranges["Day"], "Onchain", "client_name")
-tbs[1].altair_chart(ch, use_container_width=True)
+# ranges = {
+#     "Day": rtv.groupby(pd.Grouper(freq="D")).sum().to_numpy().max(),
+#     "Week": rtv.groupby(pd.Grouper(freq="W")).sum().to_numpy().max(),
+#     "Month": rtv.groupby(pd.Grouper(freq="M")).sum().to_numpy().max(),
+#     "Quarter": rtv.groupby(pd.Grouper(freq="Q")).sum().to_numpy().max(),
+#     "Year": rtv.groupby(pd.Grouper(freq="Y")).sum().to_numpy().max()
+# }
 
-ch = temporal_bars(daily_sizes, "yearweek", "Week",
-                   ranges["Week"], "Onchain", "client_name")
-tbs[2].altair_chart(ch, use_container_width=True)
+# base = alt.Chart(daily_sizes).encode(x=alt.X("Day:T"))
+# ch = alt.layer(
+#     base.mark_area().transform_window(
+#         sort=[{"field": "Day"}],
+#         TotalOnChain="sum(Onchain)"
+#     ).encode(y="TotalOnChain:Q", color="client_name"),
+# ).interactive(bind_y=False).configure_axisX(grid=False)
+# tbs[0].altair_chart(ch, use_container_width=True)
 
-ch = temporal_bars(daily_sizes, "yearmonth", "Month",
-                   ranges["Month"], "Onchain", "client_name")
-tbs[3].altair_chart(ch, use_container_width=True)
+# ch = temporal_bars(daily_sizes, "utcyearmonthdate", "Day",
+#                    ranges["Day"], "Onchain", "client_name")
+# tbs[1].altair_chart(ch, use_container_width=True)
 
-ch = temporal_bars(daily_sizes, "yearquarter", "Quarter",
-                   ranges["Quarter"], "Onchain", "client_name")
-tbs[4].altair_chart(ch, use_container_width=True)
+# ch = temporal_bars(daily_sizes, "yearweek", "Week",
+#                    ranges["Week"], "Onchain", "client_name")
+# tbs[2].altair_chart(ch, use_container_width=True)
 
-ch = temporal_bars(daily_sizes, "year", "Year",
-                   ranges["Year"], "Onchain", "client_name")
-tbs[5].altair_chart(ch, use_container_width=True)
+# ch = temporal_bars(daily_sizes, "yearmonth", "Month",
+#                    ranges["Month"], "Onchain", "client_name")
+# tbs[3].altair_chart(ch, use_container_width=True)
 
-pro_ct = db.provider_item_counts(
-    first_day=fday, last_day=lday, client_ids=client_ids)
-dl_st_ct = db.deal_count_by_status(
-    first_day=fday, last_day=lday, client_ids=client_ids)
-trm_ct = db.terminated_deal_count_by_reason(
-    first_day=fday, last_day=lday, client_ids=client_ids)
-idx_age = db.index_age()
+# ch = temporal_bars(daily_sizes, "yearquarter", "Quarter",
+#                    ranges["Quarter"], "Onchain", "client_name")
+# tbs[4].altair_chart(ch, use_container_width=True)
 
-cols = tbs[6].columns((3, 2, 2))
-with cols[0]:
-    ch = alt.Chart(cp_ct_sz, title="Active/Published Copies").mark_bar().encode(
-        x="Count:Q",
-        y=alt.Y("Copies:O", sort="-y"),
-        tooltip=["Copies:O", alt.Tooltip("Count:Q", format=",")]
-    ).configure_axisX(grid=False)
-    st.altair_chart(ch, use_container_width=True)
-with cols[1]:
-    ch = alt.Chart(dl_st_ct).mark_arc().encode(
-        theta="Count:Q",
-        color=alt.Color("Status:N",
-                        scale=alt.Scale(domain=["active", "published", "terminated"], range=[
-                            "teal", "orange", "red"]),
-                        legend=alt.Legend(title="Deal Status", orient="top")),
-        tooltip=["Status:N", alt.Tooltip("Count:Q", format=",")]
-    )
-    st.altair_chart(ch, use_container_width=True)
-with cols[2]:
-    ch = alt.Chart(trm_ct).mark_arc().encode(
-        theta="Count:Q",
-        color=alt.Color("Reason:N", scale=alt.Scale(domain=["expired", "slashed"], range=["orange", "red"]),
-                        legend=alt.Legend(title="Termination Reason", orient="top")),
-        tooltip=["Reason:N", alt.Tooltip("Count:Q", format=",")]
-    )
-    st.altair_chart(ch, use_container_width=True)
+# ch = temporal_bars(daily_sizes, "year", "Year",
+#                    ranges["Year"], "Onchain", "client_name")
+# tbs[5].altair_chart(ch, use_container_width=True)
 
-cols = tbs[7].columns((6, 4, 4, 3))
-with cols[0]:
-    st.caption("Daily Activity")
-    st.dataframe(daily_sizes.style.format(
-        {"Day": lambda t: t.strftime("%Y-%m-%d"), "Onchain": "{:,.0f}", "Pieces": "{:,.0f}"}),
-        use_container_width=True)
-with cols[1]:
-    st.caption("Service Providers")
-    st.dataframe(pro_ct.style.format(
-        {"Provider": "f0{}", "Count": "{:,}"}), use_container_width=True)
-with cols[2]:
-    st.caption("Active/Published Copies")
-    st.dataframe(cp_ct_sz.set_index(cp_ct_sz.columns[0]).style.format({"Count": "{:,}", "Size": "{:,.0f}"}),
-                 use_container_width=True)
-with cols[3]:
-    st.caption("Deal Status")
-    st.dataframe(dl_st_ct.set_index(
-        dl_st_ct.columns[0]), use_container_width=True)
-    st.caption("Termination Reason")
-    st.dataframe(trm_ct.set_index(trm_ct.columns[0]), use_container_width=True)
-    st.write(
-        f"_Updated: {(datetime.now(timezone.utc) - idx_age.iloc[0, 0]).total_seconds() / 60:,.0f} minutes ago._")
+# pro_ct = db.provider_item_counts(
+#     first_day=fday, last_day=lday, client_ids=client_ids)
+# dl_st_ct = db.deal_count_by_status(
+#     first_day=fday, last_day=lday, client_ids=client_ids)
+# trm_ct = db.terminated_deal_count_by_reason(
+#     first_day=fday, last_day=lday, client_ids=client_ids)
+# idx_age = db.index_age()
+
+# cols = tbs[6].columns((3, 2, 2))
+# with cols[0]:
+#     ch = alt.Chart(cp_ct_sz, title="Active/Published Copies").mark_bar().encode(
+#         x="Count:Q",
+#         y=alt.Y("Copies:O", sort="-y"),
+#         tooltip=["Copies:O", alt.Tooltip("Count:Q", format=",")]
+#     ).configure_axisX(grid=False)
+#     st.altair_chart(ch, use_container_width=True)
+# with cols[1]:
+#     ch = alt.Chart(dl_st_ct).mark_arc().encode(
+#         theta="Count:Q",
+#         color=alt.Color("Status:N",
+#                         scale=alt.Scale(domain=["active", "published", "terminated"], range=[
+#                             "teal", "orange", "red"]),
+#                         legend=alt.Legend(title="Deal Status", orient="top")),
+#         tooltip=["Status:N", alt.Tooltip("Count:Q", format=",")]
+#     )
+#     st.altair_chart(ch, use_container_width=True)
+# with cols[2]:
+#     ch = alt.Chart(trm_ct).mark_arc().encode(
+#         theta="Count:Q",
+#         color=alt.Color("Reason:N", scale=alt.Scale(domain=["expired", "slashed"], range=["orange", "red"]),
+#                         legend=alt.Legend(title="Termination Reason", orient="top")),
+#         tooltip=["Reason:N", alt.Tooltip("Count:Q", format=",")]
+#     )
+#     st.altair_chart(ch, use_container_width=True)
+
+# cols = tbs[7].columns((6, 4, 4, 3))
+# with cols[0]:
+#     st.caption("Daily Activity")
+#     st.dataframe(daily_sizes.style.format(
+#         {"Day": lambda t: t.strftime("%Y-%m-%d"), "Onchain": "{:,.0f}", "Pieces": "{:,.0f}"}),
+#         use_container_width=True)
+# with cols[1]:
+#     st.caption("Service Providers")
+#     st.dataframe(pro_ct.style.format(
+#         {"Provider": "f0{}", "Count": "{:,}"}), use_container_width=True)
+# with cols[2]:
+#     st.caption("Active/Published Copies")
+#     st.dataframe(cp_ct_sz.set_index(cp_ct_sz.columns[0]).style.format({"Count": "{:,}", "Size": "{:,.0f}"}),
+#                  use_container_width=True)
+# with cols[3]:
+#     st.caption("Deal Status")
+#     st.dataframe(dl_st_ct.set_index(
+#         dl_st_ct.columns[0]), use_container_width=True)
+#     st.caption("Termination Reason")
+#     st.dataframe(trm_ct.set_index(trm_ct.columns[0]), use_container_width=True)
+#     st.write(
+#         f"_Updated: {(datetime.now(timezone.utc) - idx_age.iloc[0, 0]).total_seconds() / 60:,.0f} minutes ago._")
 
 # with st.expander("### Experimental: Projection"):
 #     form = st.form(key='projection')
